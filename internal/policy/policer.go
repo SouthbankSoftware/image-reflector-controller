@@ -16,7 +16,9 @@ limitations under the License.
 
 package policy
 
+import imagev1 "github.com/fluxcd/image-reflector-controller/api/v1alpha1"
+
 // Policer is an interface representing a policy implementation type
 type Policer interface {
-	Latest([]string) (string, error)
+	Latest([]string, *imagev1.TagPrefixMatcher) (string, error)
 }

@@ -107,7 +107,7 @@ func (r *ImagePolicyReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	var latest string
 	if policer != nil {
 		tags := r.Database.Tags(repo.Status.CanonicalImageName)
-		latest, err = policer.Latest(tags)
+		latest, err = policer.Latest(tags, pol.Spec.TagPrefixMatcher)
 	}
 	if err != nil {
 		r.event(pol, events.EventSeverityError, err.Error())

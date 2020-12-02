@@ -18,6 +18,8 @@ package policy
 
 import (
 	"testing"
+
+	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1alpha1"
 )
 
 func TestNewAlphabetical(t *testing.T) {
@@ -63,47 +65,71 @@ func TestAlphabetical_Latest(t *testing.T) {
 		label           string
 		order           string
 		versions        []string
+		match           *imagev1.TagPrefixMatcher
 		expectedVersion string
 		expectErr       bool
 	}{
 		{
-			label:           "Ubuntu CalVer",
+			label:           "With Ubuntu CalVer",
 			versions:        []string{"16.04", "16.04.1", "16.10", "20.04", "20.10"},
 			expectedVersion: "20.10",
 		},
-
 		{
-			label:           "Ubuntu CalVer descending",
+			label:           "With Ubuntu CalVer prefix include",
+			versions:        []string{"16.04", "16.04.1", "16.10", "20.04", "20.10"},
+			match:           &imagev1.TagPrefixMatcher{Include: []string{"16"}},
+			expectedVersion: "16.10",
+		},
+		{
+			label:           "With Ubuntu CalVer descending",
 			versions:        []string{"16.04", "16.04.1", "16.10", "20.04", "20.10"},
 			order:           AlphabeticalOrderDesc,
 			expectedVersion: "16.04",
 		},
 		{
-			label:           "Ubuntu code names",
+			label:           "With Ubuntu code names",
 			versions:        []string{"xenial", "yakkety", "zesty", "artful", "bionic"},
 			expectedVersion: "zesty",
 		},
 		{
-			label:           "Ubuntu code names descending",
+			label:           "With Ubuntu code names descending",
 			versions:        []string{"xenial", "yakkety", "zesty", "artful", "bionic"},
 			order:           AlphabeticalOrderDesc,
 			expectedVersion: "artful",
 		},
 		{
-			label:           "Timestamps",
+			label:           "With Timestamps",
 			versions:        []string{"1606234201", "1606364286", "1606334092", "1606334284", "1606334201"},
 			expectedVersion: "1606364286",
 		},
 		{
-			label:           "Timestamps desc",
+			label:           "With Timestamps desc",
 			versions:        []string{"1606234201", "1606364286", "1606334092", "1606334284", "1606334201"},
 			order:           AlphabeticalOrderDesc,
 			expectedVersion: "1606234201",
 		},
 		{
-			label:           "Timestamps with prefix",
+			label:           "With Timestamps prefix",
 			versions:        []string{"rel-1606234201", "rel-1606364286", "rel-1606334092", "rel-1606334284", "rel-1606334201"},
 			expectedVersion: "rel-1606364286",
+		},
+		{
+			label:           "With prefix include",
+			versions:        []string{"rel-1", "rel-2", "rel-3", "rel-4", "dev-5", "dev-6"},
+			match:           &imagev1.TagPrefixMatcher{Include: []string{"rel-"}},
+			expectedVersion: "rel-4",
+		},
+		{
+			label:           "With prefix exclude",
+			versions:        []string{"rel-1", "rel-2", "rel-3", "rel-4", "dev-5", "dev-6"},
+			match:           &imagev1.TagPrefixMatcher{Exclude: []string{"rel-"}},
+			expectedVersion: "dev-6",
+		},
+		{
+			label:           "With prefix include strip",
+			versions:        []string{"rel-11", "rel-12", "rel-13", "rel-15", "dev-5", "dev-6", "ver-12", "ver-10", "gen-50"},
+			match:           &imagev1.TagPrefixMatcher{Include: []string{"rel-", "ver-"}, Trim: true},
+			expectedVersion: "rel-15",
 		},
 		{
 			label:     "Empty version list",
@@ -119,7 +145,7 @@ func TestAlphabetical_Latest(t *testing.T) {
 				t.Fatalf("returned unexpected error: %s", err)
 			}
 
-			latest, err := policy.Latest(tt.versions)
+			latest, err := policy.Latest(tt.versions, tt.match)
 			if tt.expectErr && err == nil {
 				t.Fatalf("expecting error, got nil")
 			}

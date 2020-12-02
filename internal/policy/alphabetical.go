@@ -19,6 +19,9 @@ package policy
 import (
 	"fmt"
 	"sort"
+	"strings"
+
+	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1alpha1"
 )
 
 const (
@@ -51,17 +54,43 @@ func NewAlphabetical(order string) (*Alphabetical, error) {
 }
 
 // Latest returns latest version from a provided list of strings
-func (p *Alphabetical) Latest(versions []string) (string, error) {
+func (p *Alphabetical) Latest(versions []string, matcher *imagev1.TagPrefixMatcher) (string, error) {
 	if len(versions) == 0 {
 		return "", fmt.Errorf("version list argument cannot be empty")
 	}
 
-	sorted := sort.StringSlice(versions)
+	if matcher != nil {
+		versions = PrefixMatchFilter(versions, matcher.Include, matcher.Exclude)
+	}
+
+	var sorted sort.StringSlice
+	if matcher != nil && matcher.Trim && len(matcher.Include) > 0 {
+		for _, tag := range versions {
+			processed := tag
+			for _, in := range matcher.Include {
+				processed = strings.TrimPrefix(processed, in)
+			}
+			sorted = append(sorted, processed)
+		}
+	} else {
+		sorted = versions
+	}
+
 	if p.Order == AlphabeticalOrderDesc {
 		sort.Sort(sorted)
 	} else {
 		sort.Sort(sort.Reverse(sorted))
 	}
 
-	return sorted[0], nil
+	latest := sorted[0]
+	if matcher != nil && matcher.Trim && len(matcher.Include) > 0 {
+		for _, tag := range versions {
+			for _, in := range matcher.Include {
+				if latest == strings.TrimPrefix(tag, in) {
+					return tag, nil
+				}
+			}
+		}
+	}
+	return latest, nil
 }

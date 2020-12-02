@@ -18,6 +18,8 @@ package policy
 
 import (
 	"testing"
+
+	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1alpha1"
 )
 
 func TestNewSemVer(t *testing.T) {
@@ -57,26 +59,62 @@ func TestSemVer_Latest(t *testing.T) {
 		label           string
 		semverRange     string
 		versions        []string
+		match           *imagev1.TagPrefixMatcher
 		expectedVersion string
 		expectErr       bool
 	}{
 		{
-			label:           "Regular",
+			label:           "With valid format",
 			versions:        []string{"1.0.0", "1.0.0.1", "1.0.0p", "1.0.1", "1.2.0", "0.1.0"},
 			semverRange:     "1.0.x",
 			expectedVersion: "1.0.1",
 		},
 		{
-			label:           "Regular with prefix",
+			label:           "With valid format prefix",
 			versions:        []string{"v1.2.3", "v1.0.0", "v0.1.0"},
 			semverRange:     "1.0.x",
 			expectedVersion: "v1.0.0",
 		},
 		{
-			label:       "With invalid prefix",
+			label:           "With valid format prefix strip",
+			versions:        []string{"v1.2.3", "v1.0.0", "v0.1.0"},
+			match:           &imagev1.TagPrefixMatcher{Include: []string{"v"}, Trim: true},
+			semverRange:     "1.0.x",
+			expectedVersion: "v1.0.0",
+		},
+		{
+			label:       "With invalid format prefix",
 			versions:    []string{"b1.2.3", "b1.0.0", "b0.1.0"},
 			semverRange: "1.0.x",
 			expectErr:   true,
+		},
+		{
+			label:           "With invalid format prefix strip",
+			versions:        []string{"b1.2.3", "b1.0.0", "b0.1.0"},
+			match:           &imagev1.TagPrefixMatcher{Include: []string{"b"}, Trim: true},
+			semverRange:     "1.0.x",
+			expectedVersion: "b1.0.0",
+		},
+		{
+			label:       "With invalid format prefix include",
+			versions:    []string{"ver1.0.3", "ver1.0.0", "ver0.1.0", "dev-v1.0.2", "dev-v1.0.0"},
+			match:       &imagev1.TagPrefixMatcher{Include: []string{"dev-"}},
+			semverRange: "1.0.x",
+			expectErr:   true,
+		},
+		{
+			label:           "With invalid format prefix include strip",
+			versions:        []string{"ver1.0.3", "ver1.0.0", "ver0.1.0", "dev-v1.0.2", "dev-v1.0.0"},
+			match:           &imagev1.TagPrefixMatcher{Include: []string{"dev-"}, Trim: true},
+			semverRange:     "1.0.x",
+			expectedVersion: "dev-v1.0.2",
+		},
+		{
+			label:           "With valid format prefix exclude",
+			versions:        []string{"v1.0.1", "v2.0.0", "v3.1.0", "v1.1.0"},
+			match:           &imagev1.TagPrefixMatcher{Exclude: []string{"v3"}},
+			semverRange:     ">1.0.0",
+			expectedVersion: "v2.0.0",
 		},
 		{
 			label:       "With empty list",
@@ -99,7 +137,7 @@ func TestSemVer_Latest(t *testing.T) {
 				t.Fatalf("returned unexpected error: %s", err)
 			}
 
-			latest, err := policy.Latest(tt.versions)
+			latest, err := policy.Latest(tt.versions, tt.match)
 			if tt.expectErr && err == nil {
 				t.Fatalf("expecting error, got nil")
 			}

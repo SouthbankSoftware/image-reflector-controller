@@ -81,6 +81,28 @@ spec:
                     - range
                     type: object
                 type: object
+              tagPrefxMatcher:
+                description: TagPrefixMatcher enables filtering for only a subset
+                  of tags based on their literal prefix. If not provided, all the
+                  tags from the repository will be ordered and compared.
+                properties:
+                  exclude:
+                    description: Exclude specifies a set of literal tag prefixes used
+                      to filter out tags from the given list.
+                    items:
+                      type: string
+                    type: array
+                  include:
+                    description: Include specifies a set of literal tag prefixes used
+                      to filter in tags from the given list.
+                    items:
+                      type: string
+                    type: array
+                  trim:
+                    description: Trim instructs the policy to remove the specified
+                      include matched prefixes prior to running the sort evaluation.
+                    type: boolean
+                type: object
             required:
             - imageRepositoryRef
             - policy

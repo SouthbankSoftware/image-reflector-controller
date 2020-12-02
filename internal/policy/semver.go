@@ -18,8 +18,10 @@ package policy
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1alpha1"
 	"github.com/fluxcd/pkg/version"
 )
 
@@ -44,21 +46,36 @@ func NewSemVer(r string) (*SemVer, error) {
 }
 
 // Latest returns latest version from a provided list of strings
-func (p *SemVer) Latest(versions []string) (string, error) {
+func (p *SemVer) Latest(versions []string, matcher *imagev1.TagPrefixMatcher) (string, error) {
 	if len(versions) == 0 {
 		return "", fmt.Errorf("version list argument cannot be empty")
 	}
 
+	if matcher != nil {
+		versions = PrefixMatchFilter(versions, matcher.Include, matcher.Exclude)
+	}
+
 	var latestVersion *semver.Version
-	for _, ver := range versions {
-		if v, err := version.ParseVersion(ver); err == nil {
+	var result string
+	for _, tag := range versions {
+		processed := tag
+		if matcher != nil && matcher.Trim {
+			for _, in := range matcher.Include {
+				processed = strings.TrimPrefix(processed, in)
+			}
+		}
+		if v, err := version.ParseVersion(processed); err == nil {
 			if p.constraint.Check(v) && (latestVersion == nil || v.GreaterThan(latestVersion)) {
 				latestVersion = v
 			}
 		}
+		if latestVersion != nil && processed == latestVersion.Original() {
+			result = tag
+		}
 	}
-	if latestVersion != nil {
-		return latestVersion.Original(), nil
+
+	if result != "" {
+		return result, nil
 	}
 	return "", fmt.Errorf("unable to determine latest version from provided list")
 }

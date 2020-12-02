@@ -34,6 +34,11 @@ type ImagePolicySpec struct {
 	// selecting the most recent image
 	// +required
 	Policy ImagePolicyChoice `json:"policy"`
+	// TagPrefixMatcher enables filtering for only a subset of tags based on their
+	// literal prefix. If not provided, all the tags from the repository will be
+	// ordered and compared.
+	// +optional
+	TagPrefixMatcher *TagPrefixMatcher `json:"tagPrefxMatcher,omitempty"`
 }
 
 // ImagePolicyChoice is a union of all the types of policy that can be
@@ -65,6 +70,22 @@ type AlphabeticalPolicy struct {
 	// +kubebuilder:validation:Enum=asc;desc
 	// +optional
 	Order string `json:"order,omitempty"`
+}
+
+// TagPrefixMatcher enables filtering tags based on a set of defined rules
+type TagPrefixMatcher struct {
+	// Include specifies a set of literal tag prefixes used to filter in tags
+	// from the given list.
+	// +optional
+	Include []string `json:"include"`
+	// Exclude specifies a set of literal tag prefixes used to filter out tags
+	// from the given list.
+	// +optional
+	Exclude []string `json:"exclude"`
+	// Trim instructs the policy to remove the specified include matched
+	// prefixes prior to running the sort evaluation.
+	// +optional
+	Trim bool `json:"trim"`
 }
 
 // ImagePolicyStatus defines the observed state of ImagePolicy
